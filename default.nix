@@ -13,9 +13,11 @@ with import <nixpkgs> {}; {
           algorithms
           algorithmicx
           appendixnumberbeamer
+          beamer
           biber
           biblatex
           biblatex-gost
+          booktabs
           caption
           chngcntr
           cm-super
@@ -34,8 +36,9 @@ with import <nixpkgs> {}; {
           setspace
           subfigure
           tabu
-          totcount
           titlesec
+          totcount
+          translator
           ulem
           varwidth
           was
