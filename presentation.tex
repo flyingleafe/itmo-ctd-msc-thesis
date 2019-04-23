@@ -122,7 +122,7 @@
 %----------------------------------------------------------------------------------------
 
 % The short title appears at the bottom of every slide, the full title is only on the title page
-\title[GGRN-routing]{
+\title[DQN-routing]{
   Децентрализованный алгоритм управления конвейерной системой
   с использованием методов мультиагентного обучения с подкреплением
 }
@@ -205,6 +205,46 @@
 %-------------------------------------------------
 
 \begin{frame}
+  \frametitle{Идея}
+  \begin{itemize}
+  \item Сосредоточимся на обобщенной задаче маршрутизации в ориентированном графе
+  \item Обучение с подкреплением
+  \item Нейросети в качестве обучающихся агентов
+  \item Q-routing\footcite{q-routing-orig}
+    \begin{itemize}
+    \item Не получил широкого распространения в компьютерных сетях (использует
+      слишком много служебных пакетов)
+    \item В других задачах (трафик, конвейеры) это не является проблемой.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}
+  \frametitle{Постановка задачи в терминах RL}
+  \begin{itemize}
+    \item Рассмотрим \textit{пакет} в сети как обучающегося агента,
+      взаимодействующего с сетью как со средой
+    \item Полное состояние среды неизвестно, состояние текущего роутера ---
+      \textit{наблюдение} пакета
+    \item Действие --- переход к одному из соседей
+    \item Q-learning:
+      \[
+      Q(o_t, a_t) \leftarrow r_t + \gamma \cdot
+      \max\limits_{a \in \mathcal{A}_{o_{t+1}}} {Q(o_{t+1}, a)}
+      \]
+    \item Принцип аналогичный Q-routing:
+      \[
+      Q_x(d, y) \leftarrow (t_{finish} - t_{start}) +
+      \max\limits_{z \in \{ V | (y, z) \in E\}} {Q_y(d, z)}
+      \]
+  \end{itemize}
+\end{frame}
+
+%----------------------------------------------------------------
+
+\begin{frame}
   \frametitle{Что было сделано}
   \begin{columns}
     \begin{column}{0.5\textwidth}
@@ -219,6 +259,7 @@
         \item Матрица смежности графа
         \end{itemize}
       \end{itemize}
+      Был протестирован в сеттинге компьютерных и конвейерных сетей
     \end{column}
     \begin{column}{0.5\textwidth}
       \begin{center}
@@ -228,6 +269,115 @@
   \end{columns}
   \footcitetext{mukhutdinov2019multi}
 \end{frame}
+
+\begin{frame}
+  \frametitle{Эксперименты в модели компьютерной сети}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \begin{itemize}
+      \item Запуск экспериментов в симуляторе
+      \item Сравнение архитектур между собой и сравнение с алгоритмами link-state и Q-routing
+      \item Служебные сообщения доставляются бесплатно
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \begin{center}
+        \includegraphics[width=0.7\textwidth]{graph-2}
+
+        Топология сети для тестов
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Изменение топологии сети: сравнение с link-state и Q-routing}
+  \includegraphics[width=\textwidth]{experiment-link-failures} 
+\end{frame}
+
+%------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Изменение нагрузки: сравнение c link-state и Q-routing}
+  \includegraphics[width=\textwidth]{experiment-peak-load} 
+\end{frame}
+
+%------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Эксперименты в модели системы багажных конвейеров}
+  \begin{columns}
+    \begin{column}{0.5\textwidth} 
+      \begin{itemize}
+      \item Конвейерная сеть моделируется как ориентированный граф
+      \item Каждая секция конвейера -- отдельная вершина
+      \item В оптизируемую функцию включено \textit{энергопотребление}
+      \item На вход нейросети дополнительно подается информация о состоянии конвейеров
+      \item Важность экономии энергии регулируется параметром $\alpha$
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{belt-illustration}  
+
+      Участок конвейерной сети и соответствующий участок графа
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Модель конвейерной системы для проведения экспериментов}
+  \begin{center}
+    \includegraphics[width=0.9\textwidth]{test-conveyors} 
+  \end{center}
+\end{frame}
+
+%------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Неравномерный поток до выходных вершин: сравнение c link-state и Q-routing}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{experiment-conveyors-en1-time-tall}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{experiment-conveyors-en1-energy-tall}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Плавное повышение нагрузки: $\alpha = 1$}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{experiment-conveyors-a1-time-tall}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{experiment-conveyors-a1-energy-tall}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Плавное повышение нагрузки: $\alpha = 0.6$}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{experiment-conveyors-a06-time-tall}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{experiment-conveyors-a06-energy-tall}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%-------------------------------------------------------
 
 \begin{frame}
   \frametitle{Плюсы и минусы DQN-routing}
@@ -240,8 +390,9 @@
     \end{itemize}
   \item Минусы
     \begin{itemize}
-    \item Требует предварительного обучения с учителем
+    \item Размер выходного слоя линейно зависит от размера графа
     \item Размер входного слоя квадратично зависит от размера графа
+    \item Требует предварительного обучения с учителем
     \end{itemize}
   \end{itemize}
 \end{frame}
@@ -251,6 +402,7 @@
 \begin{frame}
   \frametitle{Идеи усовершенствования алгоритма}
   \begin{itemize}
+  \item Предсказание Q-функции отдельно для каждого исходящего ребра
   \item Использование графовых эмбеддингов
   %% \item Использование метода актора-критика
   \item Зональная маршрутизация
@@ -259,6 +411,28 @@
 \end{frame}
 
 %-------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Предсказание Q-функции для соседей по отдельности}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \begin{itemize}
+      \item Только небольшое количество узлов в сети являются нашими соседями по
+        исходящим ребрам
+      \item Можем предсказывать значение Q-функции для каждого из них в
+        отдельности, подавая номер каждого из них на вход
+      \item Избавляемся от линейной зависимости размера выходного слоя от
+        размера графа
+      \item Качество работы остается прежним
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth]{nn-1-one-out}
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
 
 \begin{frame}
   \frametitle{Иcпользование графовых эмбеддингов: идея}
@@ -273,13 +447,13 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Иcпользование графовых эмбеддингов: результаты}
-  Алгоритм HOPE\footcite{ou2016asymmetric} с использованием Katz index как
-  метрики похожести.
-  \includegraphics[width=0.8\textwidth]{peak-load-embedding} \\
-  :(
-\end{frame}
+%% \begin{frame}
+%%   \frametitle{Иcпользование графовых эмбеддингов: результаты}
+%%   Алгоритм HOPE\footcite{ou2016asymmetric} с использованием Katz index как
+%%   метрики похожести.
+%%   \includegraphics[width=0.8\textwidth]{peak-load-embedding} \\
+%%   :(
+%% \end{frame}
 
 %-------------------------------------------------------
 
@@ -302,10 +476,10 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Зональная маршрутизация: результаты}
-  \huge{:shrug:}
-\end{frame}
+%% \begin{frame}
+%%   \frametitle{Зональная маршрутизация: результаты}
+%%   \huge{:shrug:}
+%% \end{frame}
 
 %-------------------------------------------------------
 
@@ -335,24 +509,24 @@
   \footcitetext{geyer2018learning}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Глобальная графовая нейронная сеть: результаты}
-  \huge{:shrug:}
-\end{frame}
+%% \begin{frame}
+%%   \frametitle{Глобальная графовая нейронная сеть: результаты}
+%%   \huge{:shrug:}
+%% \end{frame}
+
+%-------------------------------------------------------
+
+%% \begin{frame}
+%%   \frametitle{Итоги}
+%%   \begin{itemize}
+%%   \item :shrug:
+%%   \end{itemize}
+%% \end{frame}
 
 %-------------------------------------------------------
 
 \begin{frame}
-  \frametitle{Итоги}
-  \begin{itemize}
-  \item :shrug:
-  \end{itemize}
-\end{frame}
-
-%-------------------------------------------------------
-
-\begin{frame}
-  \frametitle{Дальнейшие направления исследований}
+  \frametitle{Прочие направления дальнейших исследований}
   \begin{itemize}
   \item Проведение большего числа экспериментах на различных топологиях
   \item Динамическое управление скоростями конвейеров
@@ -367,13 +541,13 @@
   \end{center}
 \end{frame}
 
-\begin{frame}[allowframebreaks]
-  \frametitle{Библиография}
-  \printbibliography
-\end{frame}
+%% \begin{frame}[allowframebreaks]
+%%   \frametitle{Библиография}
+%%   \printbibliography
+%% \end{frame}
 
 %-------------------------------------------------------
-\appendix
+%% \appendix
 
 %% \begin{frame}
 %%   \frametitle{Иллюстрация несходимости алгоритма к оптимуму без предобучения}
