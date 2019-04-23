@@ -8,6 +8,7 @@ with import <nixpkgs> {}; {
           collection-basic
           collection-fontsrecommended
           collection-langcyrillic
+          collection-langgerman
           collection-xetex
 
           algorithms
