@@ -76,6 +76,10 @@
 \setbeamertemplate{navigation symbols}{} % To remove the navigation symbols from the bottom of all slides uncomment this line
 %% }
 
+% Captions
+\setbeamertemplate{caption}[numbered]
+\setbeamerfont{caption}{size=\footnotesize}
+
 % Language and fonts
 \usepackage[T2A]{fontenc}
 \usepackage[utf8]{inputenc}
@@ -122,7 +126,7 @@
 %----------------------------------------------------------------------------------------
 
 % The short title appears at the bottom of every slide, the full title is only on the title page
-\title[DQN-routing]{
+\title[DQN-LE-routing]{
   Децентрализованный алгоритм управления конвейерной системой
   с использованием методов мультиагентного обучения с подкреплением
 }
@@ -140,7 +144,7 @@
 }
 \date{\today} % Date, can be changed to a custom date
 
-\graphicspath{{img/}}
+\graphicspath{{img/}{live_img/}}
 
 \begin{document}
 
@@ -176,6 +180,7 @@
     \item Решает глобальную оптимизационную задачу в форме LP/QP
     \item Вся система контролируется централизованно
     \item Не может обрабатывать изменения в системе, не заложенные в модель (поломки)
+    \item Не найдено алгоритма именно для багажных ленточных конвейеров
     \end{itemize}
   \item Маршрутизация по аналогии с компьютерными сетями\footcite{vyatkin-controllers}
     \begin{itemize}
@@ -214,7 +219,7 @@
     \begin{itemize}
     \item Не получил широкого распространения в компьютерных сетях (использует
       слишком много служебных пакетов)
-    \item В других задачах (трафик, конвейеры) это не является проблемой.
+    \item В конвейерных сетях это не является проблемой.
     \end{itemize}
   \end{itemize}
 \end{frame}
@@ -245,19 +250,19 @@
 %----------------------------------------------------------------
 
 \begin{frame}
-  \frametitle{Что было сделано}
+  \frametitle{Что было сделано: алгоритм DQN-routing\footcite{mukhutdinov2019multi}}
   \begin{columns}
     \begin{column}{0.5\textwidth}
-      Алгоритм DQN-routing\footnotemark
       \begin{itemize}
       \item Объединяет link-state протокол с алгоритмом Q-routing
       \item Вход нейросети:
         \begin{itemize}
-        \item Номер текущего узла
-        \item Номер узла назначения
-        \item Узлы-соседи
+        \item Номер текущего узла $n$
+        \item Номер узла назначения $d$
+        \item Узлы-соседи $Y$
         \item Матрица смежности графа
         \end{itemize}
+      \item Выход: $\{ Q_x(d, y) \}_{y \in Y}$
       \end{itemize}
       Был протестирован в сеттинге компьютерных и конвейерных сетей
     \end{column}
@@ -267,24 +272,166 @@
       \end{center}
     \end{column}
   \end{columns}
-  \footcitetext{mukhutdinov2019multi}
 \end{frame}
 
+%----------------------------------------------------------------
+
 \begin{frame}
-  \frametitle{Эксперименты в модели компьютерной сети}
+  \frametitle{Плюсы и минусы DQN-routing}
+  \begin{itemize}
+  \item Плюсы
+    \begin{itemize}
+    \item Адаптация под изменения трафика
+    \item Адаптация после поломок
+    \item Оптимизация времени доставки и энергопотребления с заданным приоритетом
+    \end{itemize}
+  \item Минусы
+    \begin{itemize}
+    \item Размер выходного слоя линейно зависит от размера графа
+    \item Размер входного слоя квадратично (!) зависит от размера графа
+    \item Требует предварительного обучения с учителем
+    \end{itemize}
+  \end{itemize}
+  Можно ли избавиться от минусов, не потеряв плюсов?
+\end{frame}
+
+%----------------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Идеи усовершенствования алгоритма}
+  \begin{itemize}
+  \item Предсказание Q-функции отдельно для каждого исходящего ребра
+    \begin{itemize}
+    \item Вместо множества текущих соседей подаем на вход одного соседа $y$.
+    \item Один нейрон на выходном слое выдает скалярное значение $Q_x(d, y)$
+    \end{itemize}
+
+  \item Использование графовых эмбеддингов
+    \begin{itemize}
+    \item Вместо кодирования меток узлов унитарным кодом использовать их
+      отображения в векторное пространство фиксированной размерности
+    \item Отказ от подачи на вход матрицы смежности
+      \begin{itemize}
+      \item Вместо этого пересчитывать эмбеддинги при изменении топологии
+      \item Эмбеддинги косвенно передадут информацию о топологии
+      \end{itemize}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+%----------------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Модификация: DQN-LE-routing}
   \begin{columns}
     \begin{column}{0.6\textwidth}
       \begin{itemize}
-      \item Запуск экспериментов в симуляторе
-      \item Сравнение архитектур между собой и сравнение с алгоритмами link-state и Q-routing
-      \item Служебные сообщения доставляются бесплатно
+      \item Получаем эмбеддинги методом Laplacian Eigenmaps (LE)
+      \item Нормализуем веса ребер по среднему перед расчетом
+      \item Полученные эмбеддинги домножаем на средний вес
+      \end{itemize}
+
+      Тогда
+      \begin{align*}
+        Q_n(d, y) = f_{\theta}( &(LE_G(d) - LE_G(n)) \odot \\
+                             &(LE_G(y) - LE_G(n)))
+      \end{align*}
+
+      , где:
+      \begin{itemize}
+      \item $LE_G(\cdot)$ возвращает эмбеддинг по номеру узла
+      \item $f_{\theta}(\cdot)$ --- feed-forward нейронная сеть
       \end{itemize}
     \end{column}
     \begin{column}{0.4\textwidth}
       \begin{center}
-        \includegraphics[width=0.7\textwidth]{graph-2}
+        \includegraphics[width=\textwidth]{nn-1-one-out.png}
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
 
-        Топология сети для тестов
+%----------------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Эксперименты в модели компьютерной сети}
+  \begin{itemize}
+  \item Запуск экспериментов в симуляторе
+  \item Размерность эмбеддинга: 8
+  \item Бейзлайны:
+    \begin{itemize}
+    \item Табличный Q-routing
+    \item Дейкстра с протоколом link-state (shortest paths, SP)
+    \item Оригинальный DQN-routing (DQN)
+    \end{itemize}
+  \item Служебные сообщения доставляются бесплатно
+  \item Зачем?
+    \begin{itemize}
+    \item Быстрее симулировать, чем конвейеры
+    \item Показываем универсальность алгоритма
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Эксперименты в модели компьютерной сети: предобучение}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}
+      \item У нетабличного Q-обучения нет гарантий сходимости (\ref{fig:dqn-no-pretrain})
+      \item Experience replay не работает в нестационарной среде
+      \item Предобучаем на действиях алгоритма shortest paths
+      \item Получаем данные на базовом графе (\ref{fig:network-small}) и его модификациях
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+        \begin{figure}[!h]
+          \caption{Базовая топология сети для тестов}\label{fig:network-small}
+          \centerline{\includegraphics[width=0.4\textwidth]{graph-2-1.png}}
+        \end{figure}        
+        \vspace{-0.4in}
+        \begin{figure}[!h]
+          \caption{Работа DQN без предобучения}\label{fig:dqn-no-pretrain}
+          \centerline{\includegraphics[width=\textwidth]{dqn-no-pretrain-small}}
+        \end{figure}
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+%------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Эксперименты: резкое изменение нагрузки}
+  \includegraphics[width=\textwidth]{peak-load-small} 
+\end{frame}
+
+%------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Эксперименты: обрыв и восстановление соединений}
+  \includegraphics[width=\textwidth]{topology-change-small} 
+\end{frame}
+
+%------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Перенос опыта на новую топологию}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}
+      \item DQN-LE-routing все еще требует предобучения
+      \item Однако, если опыт переносится на совершенно новые топологии, это не страшно
+      \item Проверим производительность на случайном графе 
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+          \centerline{\includegraphics[width=0.4\textwidth]{graph-2-1.png}}
+          \centerline{\Big\downarrow}
+          \centerline{\includegraphics[width=\textwidth]{random-graph-10n}}
       \end{center}
     \end{column}
   \end{columns}
@@ -293,15 +440,45 @@
 %------------------------------------------------------
 
 \begin{frame}
-  \frametitle{Изменение топологии сети: сравнение с link-state и Q-routing}
-  \includegraphics[width=\textwidth]{experiment-link-failures} 
+  \frametitle{Перенос опыта на новую топологию: то же кол-во вершин}
+  \includegraphics[width=\textwidth]{learning-transfer-small} 
 \end{frame}
 
 %------------------------------------------------------
 
 \begin{frame}
-  \frametitle{Изменение нагрузки: сравнение c link-state и Q-routing}
-  \includegraphics[width=\textwidth]{experiment-peak-load} 
+  \frametitle{Перенос опыта на новую топологию: большее кол-во вершин}
+  \begin{columns}
+    \begin{column}{0.3\textwidth}
+      \centerline{\includegraphics[width=0.8\textwidth]{graph-2-1.png}}
+    \end{column}
+    \begin{column}{0.1\textwidth}
+      $\hbox{\fontsize{1in}{1in}\selectfont\(\Rightarrow\)}$
+    \end{column}
+    \begin{column}{0.6\textwidth}
+      \centerline{\includegraphics[width=\textwidth]{random-graph-40n}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Перенос опыта на новую топологию: большее кол-во вершин}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{figure}[!h]
+        \centerline{\includegraphics[width=\textwidth]{learning-transfer-big-low-load}}
+        \caption{Низкая нагрузка}
+      \end{figure}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{figure}
+        \centerline{\includegraphics[width=\textwidth]{learning-transfer-big-high-load}}
+        \caption{Высокая нагрузка}
+      \end{figure}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 %------------------------------------------------------
@@ -309,19 +486,21 @@
 \begin{frame}
   \frametitle{Эксперименты в модели системы багажных конвейеров}
   \begin{columns}
-    \begin{column}{0.5\textwidth} 
+    \begin{column}{0.6\textwidth} 
       \begin{itemize}
       \item Конвейерная сеть моделируется как ориентированный граф
       \item Каждая секция конвейера -- отдельная вершина
       \item В оптизируемую функцию включено \textit{энергопотребление}
       \item На вход нейросети дополнительно подается информация о состоянии конвейеров
       \item Важность экономии энергии регулируется параметром $\alpha$
+      \item Размерность эмбеддинга: 10
       \end{itemize}
     \end{column}
-    \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{belt-illustration}  
-
-      Участок конвейерной сети и соответствующий участок графа
+    \begin{column}{0.4\textwidth}
+        \begin{figure}[!h]
+          \centerline{\includegraphics[width=\textwidth]{belt-illustration}}
+          \caption{Участок конвейерной сети и соответствующий участок графа}
+        \end{figure}
     \end{column}
   \end{columns}
 \end{frame}
@@ -338,13 +517,13 @@
 %------------------------------------------------------
 
 \begin{frame}
-  \frametitle{Неравномерный поток до выходных вершин: сравнение c link-state и Q-routing}
+  \frametitle{Неравномерный поток до выходных вершин}
   \begin{columns}
     \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{experiment-conveyors-en1-time-tall}
+      \includegraphics[width=\textwidth]{conveyors1-time}
     \end{column}
     \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{experiment-conveyors-en1-energy-tall}
+      \includegraphics[width=\textwidth]{conveyors1-energy}
     \end{column}
   \end{columns}
 \end{frame}
@@ -352,13 +531,13 @@
 %------------------------------------------------------
 
 \begin{frame}
-  \frametitle{Плавное повышение нагрузки: $\alpha = 1$}
+  \frametitle{Плавное повышение нагрузки: $\alpha = 1$, $\alpha_{LE} = 0.4$}
   \begin{columns}
     \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{experiment-conveyors-a1-time-tall}
+      \includegraphics[width=\textwidth]{conveyors2-late-time}
     \end{column}
     \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{experiment-conveyors-a1-energy-tall}
+      \includegraphics[width=\textwidth]{conveyors2-late-energy}
     \end{column}
   \end{columns}
 \end{frame}
@@ -366,13 +545,14 @@
 %------------------------------------------------------
 
 \begin{frame}
-  \frametitle{Плавное повышение нагрузки: $\alpha = 0.6$}
+  \frametitle{Плавное повышение нагрузки: $\alpha = 0.8$, $\alpha_{LE} = 0.2$}
   \begin{columns}
     \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{experiment-conveyors-a06-time-tall}
+      \includegraphics[width=\textwidth]{conveyors2-early-time}
     \end{column}
+
     \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{experiment-conveyors-a06-energy-tall}
+      \includegraphics[width=\textwidth]{conveyors2-early-energy}
     \end{column}
   \end{columns}
 \end{frame}
@@ -380,72 +560,20 @@
 %-------------------------------------------------------
 
 \begin{frame}
-  \frametitle{Плюсы и минусы DQN-routing}
+  \frametitle{Итоги}
   \begin{itemize}
-  \item Плюсы
+  \item Разработана модификация алгоритма DQN-routing --- DQN-LE-routing
+  \item Модифицированный алгоритм свободен от ключевых недостатков DQN-routing:
     \begin{itemize}
-    \item Адаптация под изменения трафика
-    \item Адаптация после поломок
-    \item Оптимизация времени доставки и энергопотребления с заданным приоритетом
+    \item Зависимость размера нейронной сети от размера графа
+    \item Необходимость переобучения с учителем на новых графах
     \end{itemize}
-  \item Минусы
-    \begin{itemize}
-    \item Размер выходного слоя линейно зависит от размера графа
-    \item Размер входного слоя квадратично зависит от размера графа
-    \item Требует предварительного обучения с учителем
-    \end{itemize}
+  \item Не уступает изначальному алгоритму по качеству работы в модели компьютерной или конвейерной сети
   \end{itemize}
 \end{frame}
 
 %-------------------------------------------------------
-
-\begin{frame}
-  \frametitle{Идеи усовершенствования алгоритма}
-  \begin{itemize}
-  \item Предсказание Q-функции отдельно для каждого исходящего ребра
-  \item Использование графовых эмбеддингов
-  %% \item Использование метода актора-критика
-  \item Зональная маршрутизация
-  \item Построение глобальной графовой нейронной сети (GG-NN)
-  \end{itemize}
-\end{frame}
-
 %-------------------------------------------------------
-
-\begin{frame}
-  \frametitle{Предсказание Q-функции для соседей по отдельности}
-  \begin{columns}
-    \begin{column}{0.6\textwidth}
-      \begin{itemize}
-      \item Только небольшое количество узлов в сети являются нашими соседями по
-        исходящим ребрам
-      \item Можем предсказывать значение Q-функции для каждого из них в
-        отдельности, подавая номер каждого из них на вход
-      \item Избавляемся от линейной зависимости размера выходного слоя от
-        размера графа
-      \item Качество работы остается прежним
-      \end{itemize}
-    \end{column}
-    \begin{column}{0.4\textwidth}
-      \begin{center}
-        \includegraphics[width=\textwidth]{nn-1-one-out}
-      \end{center}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Иcпользование графовых эмбеддингов: идея}
-  \begin{itemize}
-  \item Вместо кодирования меток узлов унитарным кодом использовать их
-    отображения в векторное пространство фиксированной размерности
-  \item Отказ от подачи на вход матрицы смежности
-    \begin{itemize}
-      \item Вместо этого пересчитывать эмбеддинги при изменении топологии
-      \item Эмбеддинги косвенно передадут информацию о топологии
-    \end{itemize}
-  \end{itemize}
-\end{frame}
 
 %% \begin{frame}
 %%   \frametitle{Иcпользование графовых эмбеддингов: результаты}
@@ -457,24 +585,24 @@
 
 %-------------------------------------------------------
 
-\begin{frame}
-  \frametitle{Зональная маршрутизация: идея}
-  \begin{columns}
-    \begin{column}{0.6\textwidth}
-      \begin{itemize}
-      \item Ограничиваем рассматриваемый граф только узлами не далее $k$ ребер от
-        данного 
-      \item Если узел назначения находится вне текущей зоны --- делаем запрос к
-        узлам на границе зоны.
-      \end{itemize}
-    \end{column}
-    \begin{column}{0.4\textwidth}
-      \begin{center}
-        \includegraphics[width=\textwidth]{zone-routing}
-      \end{center}
-    \end{column}
-  \end{columns}
-\end{frame}
+%% \begin{frame}
+%%   \frametitle{Зональная маршрутизация: идея}
+%%   \begin{columns}
+%%     \begin{column}{0.6\textwidth}
+%%       \begin{itemize}
+%%       \item Ограничиваем рассматриваемый граф только узлами не далее $k$ ребер от
+%%         данного 
+%%       \item Если узел назначения находится вне текущей зоны --- делаем запрос к
+%%         узлам на границе зоны.
+%%       \end{itemize}
+%%     \end{column}
+%%     \begin{column}{0.4\textwidth}
+%%       \begin{center}
+%%         \includegraphics[width=\textwidth]{zone-routing}
+%%       \end{center}
+%%     \end{column}
+%%   \end{columns}
+%% \end{frame}
 
 %% \begin{frame}
 %%   \frametitle{Зональная маршрутизация: результаты}
@@ -482,6 +610,48 @@
 %% \end{frame}
 
 %-------------------------------------------------------
+
+%% \begin{frame}
+%%   \frametitle{Глобальная графовая нейронная сеть: результаты}
+%%   \huge{:shrug:}
+%% \end{frame}
+
+%-------------------------------------------------------
+
+%% \begin{frame}
+%%   \frametitle{Итоги}
+%%   \begin{itemize}
+%%   \item :shrug:
+%%   \end{itemize}
+%% \end{frame}
+
+%-------------------------------------------------------
+
+\begin{frame}
+  \frametitle{Направления дальнейших исследований}
+  \begin{itemize}
+  \item Поиск/изобретение более качественных бейзлайнов (например, на основе MPC)
+  \item Исследование идеи глобальной графовой нейронной сети\footcite{scarselli2009graph}\footcite{li2015gated}\footcite{geyer2018learning}
+  \item Проведение большего числа экспериментах на различных топологиях
+    \begin{itemize}
+      \item В т. ч. случайная генерация правдоподобных конвейерных сетей
+    \end{itemize}
+  \item Выход за пределы маршрутизации
+    \begin{itemize}
+      \item Обучение контроллера скорости конвейера
+    \end{itemize} 
+  \end{itemize}
+\end{frame}
+
+%-------------------------------------------------------
+
+\begin{frame}
+  \begin{center}
+    {\Huge Спасибо за внимание!}
+  \end{center}
+\end{frame}
+
+\appendix
 
 \begin{frame}
   \frametitle{Глобальная графовая нейронная сеть: идея}
@@ -509,45 +679,12 @@
   \footcitetext{geyer2018learning}
 \end{frame}
 
-%% \begin{frame}
-%%   \frametitle{Глобальная графовая нейронная сеть: результаты}
-%%   \huge{:shrug:}
-%% \end{frame}
-
-%-------------------------------------------------------
-
-%% \begin{frame}
-%%   \frametitle{Итоги}
-%%   \begin{itemize}
-%%   \item :shrug:
-%%   \end{itemize}
-%% \end{frame}
-
-%-------------------------------------------------------
-
-\begin{frame}
-  \frametitle{Прочие направления дальнейших исследований}
-  \begin{itemize}
-  \item Проведение большего числа экспериментах на различных топологиях
-  \item Динамическое управление скоростями конвейеров
-  \end{itemize}
-\end{frame}
-
-%-------------------------------------------------------
-
-\begin{frame}
-  \begin{center}
-    {\Huge Спасибо за внимание!}
-  \end{center}
-\end{frame}
-
 %% \begin{frame}[allowframebreaks]
 %%   \frametitle{Библиография}
 %%   \printbibliography
 %% \end{frame}
 
 %-------------------------------------------------------
-%% \appendix
 
 %% \begin{frame}
 %%   \frametitle{Иллюстрация несходимости алгоритма к оптимуму без предобучения}
