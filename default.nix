@@ -35,7 +35,7 @@ with import <nixpkgs> {}; {
           pgf
           scheme-basic
           setspace
-          subfigure
+          subfig
           tabu
           titlesec
           totcount
