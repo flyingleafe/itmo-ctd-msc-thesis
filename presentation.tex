@@ -163,29 +163,12 @@
   \item Распределение багажа
   \item ...
   \end{itemize}
-  Будем рассматривать случай с багажом.
-\end{frame}
-
-%------------------------------------------------
-
-\begin{frame}
-  \frametitle{Существующие решения}
+  Типы:
   \begin{itemize}
-  \item Статические стратегии управления\footcite{de1994baggage}
+  \item Для насыпных грузов
+  \item Для штучных грузов
     \begin{itemize}
-    \item Разрабатываются под конкретную топологию системы
-    \end{itemize}
-  \item Model predictive control (MPC)\footcite{cataldo2016dynamic}\footcite{zeinaly2015integrated}\footcite{luo2015energy}
-    \begin{itemize}
-    \item Решает глобальную оптимизационную задачу в форме LP/QP
-    \item Вся система контролируется централизованно
-    \item Не может обрабатывать изменения в системе, не заложенные в модель (поломки)
-    \item Не найдено алгоритма именно для багажных ленточных конвейеров
-    \end{itemize}
-  \item Маршрутизация по аналогии с компьютерными сетями\footcite{vyatkin-controllers}
-    \begin{itemize}
-    \item Децентрализованное вычисление, устойчивость к поломкам
-    \item Оптимизирует только скорость доставки чемоданов
+    \item В т. ч. для транспортировки багажа
     \end{itemize}
   \end{itemize}
 \end{frame}
@@ -193,12 +176,104 @@
 %------------------------------------------------
 
 \begin{frame}
+  \frametitle{Задача управления конвейерной системой}
+  Подзадачи:
+  \begin{itemize}
+  \item Собственно доставка грузов
+    \begin{itemize}
+    \item Является задачей маршрутизации
+    \end{itemize} 
+  \item Избежание столкновения грузов
+  \item Оптимизация энергопотребления
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Управления конвейерной системой: маршрутизация}
+  \begin{itemize}
+  \item Для насыпных грузов: оптимальный контроль по заданному расписанию\footcite{ago2007simultaneous}
+  \item Для штучных грузов (багажные системы):
+    \begin{itemize}
+    \item Оптимальный контроль нецелесообразен
+      \begin{itemize}
+      \item Пассажиры сдают багаж в случайном порядке
+      \end{itemize} 
+    \item Централизованный статический роутинг (BSR\footcite{johnstone2009status})
+    \item Децентрализованный роутинг на основе distance-vector протокола\footcite{black2009intelligent}
+    \item Закрытые проприетарные подходы от производителей систем
+    \end{itemize} 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Управления конвейерной системой: избежание столкновений}
+  \begin{itemize}
+  \item При оптимальном контроле (в насыпных конвейерах): вводится как одно из ограничений оптимизационной задачи\footcite{ago2007simultaneous}
+  \item Для штучных грузов:
+    \begin{itemize}
+    \item Одна идея: взаимная синхронизация скоростей сочленяющихся конвейеров
+    \item Кто-то это патентует\footcite{schafer2011material}
+    \item Описан в рамках децентрализованного контроля у Вяткина\footcite{black2009intelligent}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Управления конвейерной системой: энергосбережение}
+  \begin{itemize}
+  \item Для насыпных грузов:
+    \begin{itemize}
+    \item Стандартные модели энергопотребления: ISO 5048, DIN 22101, JIS B 9905 (сложные)
+    \item Упрощенные модели для оптимизации на их основе\footcite{zhang2011modeling}
+    \item Оптимальный контроль по заданному расписанию:
+      \begin{itemize}
+      \item Включение-выключение питания\footcite{middelberg2009optimal}
+      \item Управление скоростью\footcite{zhang2010optimal} (эффективнее)
+      \end{itemize}
+    \end{itemize}
+  \item Для штучных грузов:
+    \begin{itemize}
+    \item Простая абстрактная модель энергопотребления\footcite{halepoto2016design}
+      \begin{itemize}
+      \item Постулируется линейная зависимость от скорости конвейера и \textit{некоторая} -- от массы грузов на нем
+      \end{itemize} 
+    \end{itemize} 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Децентрализованный подход (Вяткин)}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}
+      \item В рамках стандарта IEC 61499
+      \item Контроллер одного конвейера -- независимый агент
+        \begin{itemize}
+        \item Оснащен датчиком скорости, детекторами сумок у развилок и отклонителями на исходящих развилках
+        \item Управляет скоростью и отклонителями
+        \item Моделирует позиции собственных сумок
+        \end{itemize}
+      \item Маршрутизация на основе distance-vector
+      \item Протокол для избежания столкновений
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth]{vyatkin-conveyors-illustration}
+        \includegraphics[width=\textwidth]{collision-avoidance-1}
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}
   \frametitle{Цель работы}
-  Разработать алгоритм управления конвейерной системой со следующими свойствами:
+  Разработать метод управления конвейерной системой со следующими свойствами:
   \begin{itemize}
   \item Децентрализованность
-  \item Многокритериальная оптимизация (время доставки багажа +
-    энергопотребление)
+  \item Оптимизация энергопотребления кроме маршрутизации и избежания столкновений
   \item Устойчивость к разнородным изменениям в условиях среды
     \begin{itemize}
     \item Изменения характеристик багажного потока
@@ -212,15 +287,18 @@
 \begin{frame}
   \frametitle{Идея}
   \begin{itemize}
-  \item Сосредоточимся на обобщенной задаче маршрутизации в ориентированном графе
-  \item Обучение с подкреплением
-  \item Нейросети в качестве обучающихся агентов
-  \item Q-routing\footcite{q-routing-orig}
+  \item Предполагаем оборудование аналогичное описанному у Вяткина
     \begin{itemize}
-    \item Не получил широкого распространения в компьютерных сетях (использует
-      слишком много служебных пакетов)
-    \item В конвейерных сетях это не является проблемой.
+    \item Один конвейер -- один контроллер
+    \item Единственное дополнительное предположение: счетчик электроэнергии
     \end{itemize}
+  \item Аналогичный протокол для избежания столкновений
+  \item Постановка задачи в терминах RL
+  \item Нейросети в качестве маршрутизаторов для каждого сочленения
+     \begin{itemize}
+     \item Логика маршрутизатора - универсальная, может использоваться и в компьютерных сетях
+     \end{itemize}
+  \item Маршрутизация на основе Q-routing\footcite{q-routing-orig}
   \end{itemize}
 \end{frame}
 
@@ -229,21 +307,19 @@
 \begin{frame}
   \frametitle{Постановка задачи в терминах RL}
   \begin{itemize}
-    \item Рассмотрим \textit{пакет} в сети как обучающегося агента,
-      взаимодействующего с сетью как со средой
-    \item Полное состояние среды неизвестно, состояние текущего роутера ---
-      \textit{наблюдение} пакета
-    \item Действие --- переход к одному из соседей
-    \item Q-learning:
-      \[
-      Q(o_t, a_t) \leftarrow r_t + \gamma \cdot
-      \max\limits_{a \in \mathcal{A}_{o_{t+1}}} {Q(o_{t+1}, a)}
-      \]
-    \item Принцип аналогичный Q-routing:
-      \[
-      Q_x(d, y) \leftarrow (t_{finish} - t_{start}) +
-      \max\limits_{z \in \{ V | (y, z) \in E\}} {Q_y(d, z)}
-      \]
+    \item Формально, агентом в сети является \textit{сумка}
+    \item Действие --- перенаправление в развилке отклонителем
+    \item Выключаем конвейеры без сумок
+      \begin{itemize}
+      \item $r_t = (t_d - t_s) + \alpha\int_{t_l^k}^{t_d} \! p_k(t) \; \mathrm{d}t$
+      \item Оверхэд рассчитывается принимающим конвейером
+      \end{itemize}
+
+    \item Вознаграждение сумки состоит из времени перемещения и оверхэда на энергопотребление:
+      \begin{itemize}
+      \item $r_t = (t_d - t_s) + \alpha\int_{t_s}^{t_d} \! p_k(t) \; \mathrm{d}t$
+      \item Оверхэд рассчитывается принимающим конвейером
+      \end{itemize}
   \end{itemize}
 \end{frame}
 
@@ -252,13 +328,12 @@
 \begin{frame}
   \frametitle{Что было сделано: алгоритм DQN-routing\footcite{mukhutdinov2019multi}}
   \begin{columns}
-    \begin{column}{0.5\textwidth}
+    \begin{column}{0.6\textwidth}
       \begin{itemize}
       \item Объединяет link-state протокол с алгоритмом Q-routing
       \item Вход нейросети:
         \begin{itemize}
-        \item Номер текущего узла $n$
-        \item Номер узла назначения $d$
+        \item Текущий узел $n$, узел назначения $d$
         \item Узлы-соседи $Y$
         \item Матрица смежности графа
         \end{itemize}
@@ -266,7 +341,7 @@
       \end{itemize}
       Был протестирован в сеттинге компьютерных и конвейерных сетей
     \end{column}
-    \begin{column}{0.5\textwidth}
+    \begin{column}{0.4\textwidth}
       \begin{center}
         \includegraphics[width=\textwidth]{nn-2}
       \end{center}
@@ -484,25 +559,30 @@
 %------------------------------------------------------
 
 \begin{frame}
-  \frametitle{Эксперименты в модели системы багажных конвейеров}
-  \begin{columns}
-    \begin{column}{0.6\textwidth} 
-      \begin{itemize}
-      \item Конвейерная сеть моделируется как ориентированный граф
-      \item Каждая секция конвейера -- отдельная вершина
-      \item В оптизируемую функцию включено \textit{энергопотребление}
-      \item На вход нейросети дополнительно подается информация о состоянии конвейеров
-      \item Важность экономии энергии регулируется параметром $\alpha$
-      \item Размерность эмбеддинга: 10
+  \frametitle{Эксперименты в модели конвейерной системы}
+  \begin{itemize}
+  \item Бейзлайны:
+    \begin{itemize}
+    \item Оригинальный децентрализованный подход Вяткина (обозн. Vyatin-Black)
+    \item Централизованный статический роутинг (BSR\footcite{johnstone2009status})
+      \begin{itemize} 
+      \item Плюс централизованное избежание столкновений по аналогии с Vyatkin-Black (самописное, нет в оригинале)
       \end{itemize}
-    \end{column}
-    \begin{column}{0.4\textwidth}
-        \begin{figure}[!h]
-          \centerline{\includegraphics[width=\textwidth]{belt-illustration}}
-          \caption{Участок конвейерной сети и соответствующий участок графа}
-        \end{figure}
-    \end{column}
-  \end{columns}
+    \item Модификация Vyatkin-Black с использованием табличного Q-routing
+    \end{itemize}
+  \item Заданы параметры:
+    \begin{itemize}
+    \item Длины и максимальные скорости конвейеров
+    \item Задержка перед остановкой после ухода сумок с конвейера
+    \item Конфигурация системы: входы, выходы и сочленения
+    \end{itemize}
+  \item Модель энергопотребления: модель от Zhang для насыпных конвейеров, адаптированная для штучных
+    \begin{itemize}
+    \item $P(V, T) = \frac{1}{\eta} \left( \theta_1 VT^2 + \theta_2 V + \theta_3 \frac{T^2}{V} + \theta_4 T + \frac{V^2T}{3.6} \right)$
+    \item $T = M_b * V * 3.6 / L$ 
+    \item $V$ -- скорость, $M_b$ -- масса всех сумок, $L$ -- длина конвейера
+    \end{itemize} 
+  \end{itemize}
 \end{frame}
 
 %------------------------------------------------------
@@ -510,7 +590,7 @@
 \begin{frame}
   \frametitle{Модель конвейерной системы для проведения экспериментов}
   \begin{center}
-    \includegraphics[width=0.9\textwidth]{test-conveyors} 
+    \includegraphics[width=0.9\textwidth]{conveyor-1-illustration-2} 
   \end{center}
 \end{frame}
 
@@ -520,42 +600,15 @@
   \frametitle{Неравномерный поток до выходных вершин}
   \begin{columns}
     \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{conveyors1-time}
+      \includegraphics[width=\textwidth]{conveyors-new-1-time}
     \end{column}
     \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{conveyors1-energy}
+      \includegraphics[width=\textwidth]{conveyors-new-1-energy}
     \end{column}
   \end{columns}
 \end{frame}
 
 %------------------------------------------------------
-
-\begin{frame}
-  \frametitle{Плавное повышение нагрузки: $\alpha = 1$, $\alpha_{LE} = 0.4$}
-  \begin{columns}
-    \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{conveyors2-late-time}
-    \end{column}
-    \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{conveyors2-late-energy}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-%------------------------------------------------------
-
-\begin{frame}
-  \frametitle{Плавное повышение нагрузки: $\alpha = 0.8$, $\alpha_{LE} = 0.2$}
-  \begin{columns}
-    \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{conveyors2-early-time}
-    \end{column}
-
-    \begin{column}{0.5\textwidth}
-      \includegraphics[width=\textwidth]{conveyors2-early-energy}
-    \end{column}
-  \end{columns}
-\end{frame}
 
 %-------------------------------------------------------
 
@@ -568,7 +621,11 @@
     \item Зависимость размера нейронной сети от размера графа
     \item Необходимость переобучения с учителем на новых графах
     \end{itemize}
-  \item Не уступает изначальному алгоритму по качеству работы в модели компьютерной или конвейерной сети
+  \item Превосходит изначальный алгоритм по качеству работы и границам применимости
+    \begin{itemize}
+    \item Также работает быстрее ввиду меньшего размера нейросети
+    \item Гораздо лучше подходит для микроконтроллерной реализации
+    \end{itemize}
   \end{itemize}
 \end{frame}
 
@@ -627,21 +684,21 @@
 
 %-------------------------------------------------------
 
-\begin{frame}
-  \frametitle{Направления дальнейших исследований}
-  \begin{itemize}
-  \item Поиск/изобретение более качественных бейзлайнов (например, на основе MPC)
-  \item Исследование идеи глобальной графовой нейронной сети\footcite{scarselli2009graph}\footcite{li2015gated}\footcite{geyer2018learning}
-  \item Проведение большего числа экспериментах на различных топологиях
-    \begin{itemize}
-      \item В т. ч. случайная генерация правдоподобных конвейерных сетей
-    \end{itemize}
-  \item Выход за пределы маршрутизации
-    \begin{itemize}
-      \item Обучение контроллера скорости конвейера
-    \end{itemize} 
-  \end{itemize}
-\end{frame}
+%% \begin{frame}
+%%   \frametitle{Направления дальнейших исследований}
+%%   \begin{itemize}
+%%   \item Поиск/изобретение более качественных бейзлайнов (например, на основе MPC)
+%%   \item Исследование идеи глобальной графовой нейронной сети\footcite{scarselli2009graph}\footcite{li2015gated}\footcite{geyer2018learning}
+%%   \item Проведение большего числа экспериментах на различных топологиях
+%%     \begin{itemize}
+%%       \item В т. ч. случайная генерация правдоподобных конвейерных сетей
+%%     \end{itemize}
+%%   \item Выход за пределы маршрутизации
+%%     \begin{itemize}
+%%       \item Обучение контроллера скорости конвейера
+%%     \end{itemize} 
+%%   \end{itemize}
+%% \end{frame}
 
 %-------------------------------------------------------
 
@@ -652,32 +709,43 @@
 \end{frame}
 
 \appendix
-
 \begin{frame}
-  \frametitle{Глобальная графовая нейронная сеть: идея}
+  \frametitle{Плавное повышение нагрузки: $\alpha = 5e6$}
   \begin{columns}
-    \begin{column}{0.6\textwidth}
-      \begin{itemize}
-      \item Рассматриваем весь граф с состояниями ребер и узлов как вход для
-        графовой нейронной сети (GG-NN)
-      \item Считается распределенно на физических узлах системы
-      \item Промежуточные состояния и их градиенты передаются между узлами по
-        сети 
-        \begin{itemize}
-        \item Применяется для компьютерных сетей с обучением с учителем\footnotemark
-        \item Добавим обучение с подкреплением во время работы
-        \end{itemize} 
-      \end{itemize}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{conveyors-new-2-time}
     \end{column}
-    \begin{column}{0.4\textwidth}
-      \begin{center}
-        \includegraphics[width=\textwidth]{gnn.png}
-        \includegraphics[width=\textwidth]{gg-qnn.png}
-      \end{center}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{conveyors-new-2-energy}
     \end{column}
   \end{columns}
-  \footcitetext{geyer2018learning}
 \end{frame}
+
+%% \begin{frame}
+%%   \frametitle{Глобальная графовая нейронная сеть: идея}
+%%   \begin{columns}
+%%     \begin{column}{0.6\textwidth}
+%%       \begin{itemize}
+%%       \item Рассматриваем весь граф с состояниями ребер и узлов как вход для
+%%         графовой нейронной сети (GG-NN)
+%%       \item Считается распределенно на физических узлах системы
+%%       \item Промежуточные состояния и их градиенты передаются между узлами по
+%%         сети 
+%%         \begin{itemize}
+%%         \item Применяется для компьютерных сетей с обучением с учителем\footnotemark
+%%         \item Добавим обучение с подкреплением во время работы
+%%         \end{itemize} 
+%%       \end{itemize}
+%%     \end{column}
+%%     \begin{column}{0.4\textwidth}
+%%       \begin{center}
+%%         \includegraphics[width=\textwidth]{gnn.png}
+%%         \includegraphics[width=\textwidth]{gg-qnn.png}
+%%       \end{center}
+%%     \end{column}
+%%   \end{columns}
+%%   \footcitetext{geyer2018learning}
+%% \end{frame}
 
 %% \begin{frame}[allowframebreaks]
 %%   \frametitle{Библиография}
